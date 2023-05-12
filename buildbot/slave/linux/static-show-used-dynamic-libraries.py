@@ -29,11 +29,11 @@ allowed_libs = (
 )
 libs = []
 match = 'Shared library: '
-for line in output.split("\n"):
-	if not match in line:
-		continue
-	libs.append(line.split(match)[1].strip("[]"))
-
+libs.extend(
+	line.split(match)[1].strip("[]")
+	for line in output.split("\n")
+	if match in line
+)
 exitcode = 0
 for lib in libs:
 	if lib in allowed_libs:

@@ -10,7 +10,7 @@ for line in fileinput.input():
 	args = line.strip().split(" ")
 	if len(args)>1 and args[1] == "NEWFRAME":
 		if count>400:
-			print("%s %s" % (args[0], count))
+			print(f"{args[0]} {count}")
 		count = 0
 		sumframes = 0
 	elif len(args) == 6 and args[1] == "NETMSG_PAUSE:": # filter pause

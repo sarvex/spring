@@ -20,7 +20,7 @@ import os, sys, subprocess, tempfile
 
 
 if len(sys.argv) < 2:
-	print("Please run with %s <config> <branch>" %(sys.argv[0]))
+	print(f"Please run with {sys.argv[0]} <config> <branch>")
 	exit(1)
 
 
@@ -37,22 +37,13 @@ TMP_PATH=os.path.join(TMP_BASE, CONFIG, BRANCH, REV)
 if 'OUTPUTDIR' in os.environ:
 	TMP_PATH=os.path.join(TMP_PATH, os.environ['OUTPUTDIR'])
 
-if CONFIG == "default":
-   CONFIG_=''
-else:
-   CONFIG_="[%s]" %(CONFIG)
-
-if BRANCH == "master":
-   BRANCH_=''
-else:
-   BRANCH_="{%s}" % (BRANCH)
-
-
-VERSION_="%s%s%s"%(CONFIG_, BRANCH_, REV)
+CONFIG_ = '' if CONFIG == "default" else f"[{CONFIG}]"
+BRANCH_ = '' if BRANCH == "master" else "{%s}" % (BRANCH)
+VERSION_ = f"{CONFIG_}{BRANCH_}{REV}"
 for char in "<>:\"/\\|?*":
 	VERSION_=VERSION_.replace(char,'')
 
-print("Detected VERSION_: %s"%(VERSION_))
+print(f"Detected VERSION_: {VERSION_}")
 
 if 'MAKE' in os.environ:
 	MAKE=os.environ['MAKE']

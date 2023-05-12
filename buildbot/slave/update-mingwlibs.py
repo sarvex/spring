@@ -3,10 +3,8 @@
 import os, subprocess, shutil
 import prepare
 
-MINGWLIBS_PATH="vclibs"
-if "MINGWLIBS_PATH" in os.environ:
-	MINGWLIBS_PATH = os.environ["MINGWLIBS_PATH"]
-print('MINGWLIBS_PATH=%s' %(MINGWLIBS_PATH))
+MINGWLIBS_PATH = os.environ.get("MINGWLIBS_PATH", "vclibs")
+print(f'MINGWLIBS_PATH={MINGWLIBS_PATH}')
 
 assert(len(MINGWLIBS_PATH) > 0)
 
@@ -19,7 +17,7 @@ else:
 	output = stdout + stderr
 	print(output)
 	if len(output) > 0:
-		print("removing builddir %s (mingwlibs updated)"%(prepare.BUILDDIR))
+		print(f"removing builddir {prepare.BUILDDIR} (mingwlibs updated)")
 		shutil.rmtree(prepare.BUILDDIR)
 		subprocess.call(["git","clean", "-f", "-d"], cwd=MINGWLIBS_PATH)
 		subprocess.call(["git","reset", "--hard", "origin/master"], cwd=MINGWLIBS_PATH)

@@ -51,11 +51,7 @@ RE_VERSION_NAME_PREFIX = "(?:[sS]pring)"
 RE_VERSION_STRING_RC12 = "([0-9]+\.[0-9]+[\.0-9]*(?:-[0-9]+-g[0-9a-f]+)?)"
 RE_VERSION_BRANCH_NAME = "([a-zA-Z0-9\-]+)?"
 RE_VERSION_BUILD_FLAGS = "?(?:\s*\((?:[a-zA-Z0-9\-]+\)))?"
-RE_VERSION =                        \
-	RE_VERSION_NAME_PREFIX + " ?" + \
-	RE_VERSION_STRING_RC12 + " ?" + \
-	RE_VERSION_BRANCH_NAME + " ?" + \
-	RE_VERSION_BUILD_FLAGS
+RE_VERSION = f"{RE_VERSION_NAME_PREFIX} ?{RE_VERSION_STRING_RC12} ?{RE_VERSION_BRANCH_NAME} ?{RE_VERSION_BUILD_FLAGS}"
 
 # Match complete line containing version string.
 # NOTE:
@@ -96,7 +92,7 @@ def test_version(string):
 		>>> test_version('spring 93.2.1-82-g863e91e release (Debug OMP)')
 		('93.2.1-82-g863e91e', 'release')
 	'''
-	log.debug('test_version():'+string)
+	log.debug(f'test_version():{string}')
 	return re.search(RE_VERSION, string, re.MULTILINE).groups()
 
 # Set up application log.
@@ -134,7 +130,7 @@ def best_matching_module(needle, haystack):
 	'''
 	parts = needle.replace('\\', '/').split('/')
 	if parts[-1] == 'SkirmishAI.dll':
-		needle = '%s/SkirmishAI.dll' % parts[-3]
+		needle = f'{parts[-3]}/SkirmishAI.dll'
 	else:
 		needle = parts[-1]
 
@@ -173,10 +169,9 @@ def detect_version_details(infolog):
 	version = None
 	branch = None
 	for re_version_line in RE_VERSION_LINES:
-		match = re.search(re_version_line, infolog, re.MULTILINE)
-		if match:
-			version = match.group(1)
-			branch = match.group(2)
+		if match := re.search(re_version_line, infolog, re.MULTILINE):
+			version = match[1]
+			branch = match[2]
 			break
 	else:
 		fatal('Unable to find detailed version in infolog')
@@ -215,15 +210,14 @@ def get_modules(dbgfile):
 	sevenzip = Popen([SEVENZIP, 'l', dbgfile], stdout = PIPE, stderr = PIPE, universal_newlines=True)
 	stdout, stderr = sevenzip.communicate()
 	if stderr:
-		log.debug('%s stderr: %s' % (SEVENZIP, stderr))
+		log.debug(f'{SEVENZIP} stderr: {stderr}')
 	if sevenzip.returncode != 0:
-		fatal('%s exited with status %s %s %s' % (SEVENZIP, sevenzip.returncode, stdout, stderr))
+		fatal(f'{SEVENZIP} exited with status {sevenzip.returncode} {stdout} {stderr}')
 
 	files = []
 	for line in stdout.split('\n'):
-		match = re.match("^.* ([a-zA-Z\/0-9\.]+dbg)$", line)
-		if match:
-			files.append(match.group(1))
+		if match := re.match("^.* ([a-zA-Z\/0-9\.]+dbg)$", line):
+			files.append(match[1])
 	return files
 
 
@@ -236,7 +230,7 @@ def collect_modules(config, branch, rev, platform, dbgsymdir = None):
 	'''
 	log.info('Checking debug data availability...')
 
-	if (dbgsymdir == None):
+	if dbgsymdir is None:
 		dbgsymdir = os.path.join(WWWROOT, config, branch, rev, platform)
 
 	log.debug(dbgsymdir)
@@ -247,8 +241,7 @@ def collect_modules(config, branch, rev, platform, dbgsymdir = None):
 	dbgfile = None
 
 	for filename in os.listdir(dbgsymdir):
-		match = re.match(RE_DEBUG_FILENAME, filename)
-		if match:
+		if match := re.match(RE_DEBUG_FILENAME, filename):
 			dbgfile = os.path.join(dbgsymdir, filename)
 
 	if not dbgfile:
@@ -259,7 +252,7 @@ def collect_modules(config, branch, rev, platform, dbgsymdir = None):
 
 	for module in archivefiles:
 		if module in ('spring.dbg', 'mapcompile.dbg', 'mapdecompile.dbg'):
-			modules[module[:-4] + ".exe"] = module
+			modules[f"{module[:-4]}.exe"] = module
 		elif module == 'unitsync.dbg':
 			modules["unitsync.dll"] = module
 		elif module.startswith('AI/Interfaces'):
@@ -267,9 +260,9 @@ def collect_modules(config, branch, rev, platform, dbgsymdir = None):
 			modules[name] = module
 		elif module.startswith('AI/Skirmish'):
 			name = module.split('/')[2]
-			modules[module + '/SkirmishAI.dll'] = module
+			modules[f'{module}/SkirmishAI.dll'] = module
 		else:
-			log.error("no match found: " + module)
+			log.error(f"no match found: {module}")
 	log.info('\t[OK]')
 	return dbgfile, modules
 
@@ -286,9 +279,9 @@ def translate_module_addresses(module, debugarchive, addresses, debugfile):
 		sevenzip = Popen([SEVENZIP, 'e', '-so', '-y', debugfile, debugarchive], stdout = tempfile, stderr = PIPE, universal_newlines=True)
 		stdout, stderr = sevenzip.communicate()
 		if stderr:
-			log.debug('%s stderr: %s' % (SEVENZIP, stderr))
+			log.debug(f'{SEVENZIP} stderr: {stderr}')
 		if sevenzip.returncode != 0:
-			fatal('%s exited with status %s' % (SEVENZIP, sevenzip.returncode))
+			fatal(f'{SEVENZIP} exited with status {sevenzip.returncode}')
 		log.info('\t\t[OK]')
 
 		log.info('\tTranslating addresses for module %s...' % module)
@@ -298,14 +291,14 @@ def translate_module_addresses(module, debugarchive, addresses, debugfile):
 			cmd = [ADDR2LINE, '-e', tempfile.name]
 		log.debug('\tCommand line: ' + ' '.join(cmd))
 		addr2line = Popen(cmd, stdin = PIPE, stdout = PIPE, stderr = PIPE, universal_newlines=True)
-		if addr2line.poll() == None:
+		if addr2line.poll() is None:
 			stdout, stderr = addr2line.communicate('\n'.join(addresses))
 		else:
 			stdout, stderr = addr2line.communicate()
 		if stderr:
-			log.debug('%s stderr: %s' % (ADDR2LINE, stderr))
+			log.debug(f'{ADDR2LINE} stderr: {stderr}')
 		if addr2line.returncode != 0:
-			fatal('%s exited with status %s' % (ADDR2LINE, addr2line.returncode))
+			fatal(f'{ADDR2LINE} exited with status {addr2line.returncode}')
 		log.info('\t\t[OK]')
 
 	def fixup(addr, file, line):
@@ -406,7 +399,7 @@ def translate_stacktrace(infolog, dbgsymdir = None):
 		module_frames, frame_count = collect_stackframes(infolog)
 		debugarchive, modules = collect_modules(config, branch, rev, 'win32', dbgsymdir)
 
-		if (debugarchive == None):
+		if debugarchive is None:
 			fatal("No debug-archive(s) found for infolog.txt")
 		if frame_count == 0:
 			fatal("No stack-trace found in infolog.txt")
@@ -439,7 +432,7 @@ def run_xmlrpc_server():
 	logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s')
 
 	with open(PIDFILE, 'w') as pidfile:
-		pidfile.write('%s' % os.getpid())
+		pidfile.write(f'{os.getpid()}')
 
 	try:
 		# Create server
